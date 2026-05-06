@@ -1,6 +1,6 @@
 
-# Create a completely new version that uses direct script loading instead of import maps
-# This avoids all CORS and import map issues
+# Create a working version with proper ES modules and import map
+# The key is to use type="module" on the script AND proper import map
 
 html_content = '''<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -10,9 +10,20 @@ html_content = '''<!DOCTYPE html>
     <title>مخطط كرفان تفاعلي 3D</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Import Map - MUST be before any module scripts -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    
     <style>
-        * { font-family: 'Tajawal', sans-serif; }
-        body { overflow: hidden; background: #0a0a0a; margin: 0; }
+        * { font-family: 'Tajawal', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #0a0a0a; }
         .glass-panel {
             background: rgba(15, 15, 25, 0.92);
             backdrop-filter: blur(24px);
@@ -111,9 +122,6 @@ html_content = '''<!DOCTYPE html>
         .mode-add-door { background: rgba(245, 158, 11, 0.2); border: 2px solid #f59e0b; color: #f59e0b; }
         .mode-add-wall { background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; color: #3b82f6; }
     </style>
-    <!-- Three.js via regular script tag (no import map needed) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
     <div id="canvas-container"></div>
@@ -240,8 +248,12 @@ html_content = '''<!DOCTYPE html>
         <div class="stat-item"><div class="stat-value" id="stat-doors">0</div><div class="stat-label">الأبواب</div></div>
     </div>
 
-    <script>
-        // Use global THREE object (loaded via script tag)
+    <!-- Main script as ES Module -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        
+        // Scene setup
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0a0a);
         scene.fog = new THREE.Fog(0x0a0a0a, 600, 1800);
@@ -256,7 +268,7 @@ html_content = '''<!DOCTYPE html>
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
         
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.maxPolarAngle = Math.PI / 2.05;
@@ -896,8 +908,8 @@ with open(output_path, 'w', encoding='utf-8') as f:
 print(f"✅ Fixed file saved!")
 print(f"📁 Path: {output_path}")
 print(f"📊 Size: {len(html_content):,} chars ({len(html_content)/1024:.1f} KB)")
-print(f"\n🔧 Changes made:")
-print(f"   - Removed Import Map (causes CORS issues on GitHub Pages)")
-print(f"   - Using direct script tags with cdnjs.cloudflare.com")
-print(f"   - Using global THREE object instead of ES modules")
-print(f"   - This version works on ALL browsers and hosting platforms")
+print(f"\n🔧 Key changes:")
+print(f"   - Import Map BEFORE any module scripts")
+print(f"   - Script type=\"module\" with proper imports")
+print(f"   - OrbitControls imported from 'three/addons/controls/OrbitControls.js'")
+print(f"   - This is the OFFICIAL Three.js way that works on GitHub Pages")
