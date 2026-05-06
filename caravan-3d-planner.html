@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مخطط كرفان تفاعلي 3D - تحرير الجدران والأبواب</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <script type="importmap">
+    {"imports": {"three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"}}
+    </script>
+    <style>
+        * { font-family: 'Tajawal', sans-serif; }
+        body { overflow: hidden; background: #0a0a0a; }
+        .glass-panel { background: rgba(15, 15, 25, 0.92); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.06); box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+        .dimension-input { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.08); color: #e0e0e0; transition: all 0.3s; }
+        .dimension-input:focus { border-color: #f59e0b; outline: none; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2); }
+        .room-label { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+        .toggle-btn { transition: all 0.3s; border: 1px solid rgba(255,255,255,0.1); }
+        .toggle-btn.active { background: #f59e0b; color: #000; border-color: #f59e0b; }
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+        .control-panel { position: fixed; top: 16px; right: 16px; width: 360px; max-height: calc(100vh - 32px); overflow-y: auto; z-index: 10; border-radius: 20px; }
+        .control-panel::-webkit-scrollbar { width: 3px; }
+        .control-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+        .stats-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; border-radius: 16px; padding: 14px 28px; display: flex; gap: 28px; }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 22px; font-weight: 800; color: #f59e0b; }
+        .stat-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+        .view-btn { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: white; cursor: pointer; transition: all 0.3s; font-size: 16px; }
+        .view-btn:hover { background: rgba(245, 158, 11, 0.25); border-color: #f59e0b; transform: translateY(-2px); }
+        .view-btn.active-view { background: #f59e0b; color: #000; border-color: #f59e0b; }
+        .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 14px 0; }
+        .section-title { font-size: 12px; font-weight: 700; color: #f59e0b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; }
+        .wall-editor-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; transition: all 0.3s; }
+        .wall-editor-item:hover { background: rgba(255,255,255,0.06); border-color: rgba(245, 158, 11, 0.3); }
+        .wall-editor-item.hidden-wall { opacity: 0.5; border-color: rgba(239, 68, 68, 0.3); }
+        .door-editor-item { background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; transition: all 0.3s; }
+        .door-editor-item:hover { background: rgba(245, 158, 11, 0.15); }
+        .btn-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; border: none; font-size: 14px; }
+        .btn-icon:hover { transform: scale(1.1); }
+        .btn-hide { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .btn-hide:hover { background: rgba(239, 68, 68, 0.4); }
+        .btn-show { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .btn-show:hover { background: rgba(34, 197, 94, 0.4); }
+        .btn-delete { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .btn-delete:hover { background: rgba(239, 68, 68, 0.3); }
+        .btn-add { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .btn-add:hover { background: rgba(245, 158, 11, 0.4); }
+        .grid-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 1; }
+        .notification { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(245, 158, 11, 0.95); color: #000; padding: 12px 24px; border-radius: 12px; font-weight: 700; z-index: 1000; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3); }
+        .notification.show { transform: translateX(-50%) translateY(0); }
+        .tooltip { position: absolute; background: rgba(0,0,0,0.9); color: white; padding: 8px 14px; border-radius: 10px; font-size: 12px; pointer-events: none; z-index: 100; display: none; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(8px); }
+        .mode-indicator { position: fixed; top: 20px; left: 20px; z-index: 100; padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 700; display: none; }
+        .mode-indicator.active { display: block; }
+        .mode-add-door { background: rgba(245, 158, 11, 0.2); border: 2px solid #f59e0b; color: #f59e0b; }
+        .mode-add-wall { background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div class="grid-bg"></div>
+    <div class="tooltip" id="tooltip"></div>
+    <div class="notification" id="notification"></div>
+    <div class="mode-indicator mode-add-door" id="mode-add-door">🚪 وضع إضافة باب - انقر على الجدار المطلوب</div>
+    <div class="mode-indicator mode-add-wall" id="mode-add-wall">🧱 وضع إضافة جدار - اسحب لتحديد موقع الجدار</div>
+
+    <!-- Control Panel -->
+    <div class="control-panel glass-panel p-5">
+        <div class="flex items-center justify-between mb-3">
+            <h1 class="text-lg font-bold text-white">📐 مخطط الكرفان</h1>
+            <span class="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded-full font-bold">3D</span>
+        </div>
+
+        <div class="section-title"><span>👁️</span> منظور العرض</div>
+        <div class="flex gap-2 mb-3">
+            <button class="view-btn active-view" id="view-3d" title="3D">🎲</button>
+            <button class="view-btn" id="view-top" title="من الأعلى">⬇️</button>
+            <button class="view-btn" id="view-front" title="من الأمام">➡️</button>
+            <button class="view-btn" id="view-side" title="من الجانب">↔️</button>
+            <button class="view-btn" id="reset-view" title="إعادة تعيين" style="background:rgba(255,255,255,0.06);">↺</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title"><span>📏</span> الأبعاد الرئيسية (سم)</div>
+        <div class="space-y-2">
+            <div class="input-group p-2 rounded-lg">
+                <div class="room-label">العرض الكلي</div>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="total-width" class="dimension-input w-full px-3 py-2 rounded-lg text-sm" value="220" min="100" max="500">
+                    <span class="text-xs text-gray-500 w-6">سم</span>
+                </div>
+            </div>
+            <div class="input-group p-2 rounded-lg">
+                <div class="room-label">الطول الكلي</div>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="total-length" class="dimension-input w-full px-3 py-2 rounded-lg text-sm" value="600" min="300" max="1200">
+                    <span class="text-xs text-gray-500 w-6">سم</span>
+                </div>
+            </div>
+            <div class="input-group p-2 rounded-lg">
+                <div class="room-label">ارتفاع الجدران</div>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="wall-height" class="dimension-input w-full px-3 py-2 rounded-lg text-sm" value="200" min="150" max="300">
+                    <span class="text-xs text-gray-500 w-6">سم</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title"><span>🏠</span> أبعاد الغرف</div>
+        <div class="space-y-2">
+            <div class="input-group p-2 rounded-lg border border-white/5">
+                <div class="room-label">🛏️ غرفة النوم اليسرى</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><span class="text-xs text-gray-500">العرض</span><input type="number" id="bedroom-left-width" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="85" min="50" max="150"></div>
+                    <div><span class="text-xs text-gray-500">الطول</span><input type="number" id="bedroom-left-length" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="200" min="100" max="300"></div>
+                </div>
+            </div>
+            <div class="input-group p-2 rounded-lg border border-white/5">
+                <div class="room-label">🛏️ غرفة النوم اليمنى</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><span class="text-xs text-gray-500">العرض</span><input type="number" id="bedroom-right-width" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="85" min="50" max="150"></div>
+                    <div><span class="text-xs text-gray-500">الطول</span><input type="number" id="bedroom-right-length" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="200" min="100" max="300"></div>
+                </div>
+            </div>
+            <div class="input-group p-2 rounded-lg border border-white/5">
+                <div class="room-label">🚶 الممر المركزي</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><span class="text-xs text-gray-500">العرض</span><input type="number" id="corridor-width" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="40" min="30" max="100"></div>
+                    <div><span class="text-xs text-gray-500">الطول</span><input type="number" id="corridor-length" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="200" min="100" max="300"></div>
+                </div>
+            </div>
+            <div class="input-group p-2 rounded-lg border border-white/5">
+                <div class="room-label">🚿 الحمام</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><span class="text-xs text-gray-500">العرض</span><input type="number" id="bathroom-width" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="95" min="60" max="150"></div>
+                    <div><span class="text-xs text-gray-500">الطول</span><input type="number" id="bathroom-length" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="200" min="100" max="300"></div>
+                </div>
+            </div>
+            <div class="input-group p-2 rounded-lg border border-white/5">
+                <div class="room-label">🍳 المطبخ</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><span class="text-xs text-gray-500">العرض</span><input type="number" id="kitchen-width" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="130" min="80" max="200"></div>
+                    <div><span class="text-xs text-gray-500">الطول</span><input type="number" id="kitchen-length" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="130" min="80" max="200"></div>
+                </div>
+            </div>
+            <div class="input-group p-2 rounded-lg border border-white/5">
+                <div class="room-label">🛋️ غرفة المعيشة</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><span class="text-xs text-gray-500">العرض</span><input type="number" id="living-width" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="220" min="100" max="300"></div>
+                    <div><span class="text-xs text-gray-500">الطول</span><input type="number" id="living-length" class="dimension-input w-full px-2 py-1.5 rounded text-sm mt-1" value="130" min="80" max="200"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title"><span>🧱</span> محرر الجدران</div>
+        <div id="wall-list" class="mb-3"></div>
+        <div class="flex gap-2 mb-3">
+            <button id="btn-add-wall" class="flex-1 btn-add py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2"><span>🧱</span> إضافة جدار</button>
+            <button id="btn-remove-all-walls" class="btn-delete py-2 px-3 rounded-lg text-sm font-bold">🗑️</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title"><span>🚪</span> محرر الأبواب</div>
+        <div id="door-list" class="mb-3"></div>
+        <div class="flex gap-2 mb-3">
+            <button id="btn-add-door" class="flex-1 btn-add py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2"><span>🚪</span> إضافة باب</button>
+            <button id="btn-remove-all-doors" class="btn-delete py-2 px-3 rounded-lg text-sm font-bold">🗑️</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title"><span>👁️</span> خيارات العرض</div>
+        <div class="flex flex-wrap gap-2 mb-3">
+            <button class="toggle-btn active px-3 py-1.5 rounded-lg text-xs font-medium" id="toggle-walls">الجدران</button>
+            <button class="toggle-btn active px-3 py-1.5 rounded-lg text-xs font-medium" id="toggle-floor">الأرضية</button>
+            <button class="toggle-btn active px-3 py-1.5 rounded-lg text-xs font-medium" id="toggle-roof">السقف</button>
+            <button class="toggle-btn px-3 py-1.5 rounded-lg text-xs font-medium" id="toggle-dimensions">المقاسات</button>
+            <button class="toggle-btn px-3 py-1.5 rounded-lg text-xs font-medium" id="toggle-furniture">الأثاث</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="flex gap-2">
+            <button id="export-btn" class="flex-1 bg-amber-500 hover:bg-amber-600 text-black font-bold py-2.5 rounded-lg text-sm transition-all">💾 حفظ</button>
+            <button id="print-btn" class="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-lg text-sm transition-all">🖨️ طباعة</button>
+        </div>
+        <div class="mt-3 text-center"><span class="text-xs text-gray-500">اسحب للدوران • تكبير بالعجلة • انقر للتحديد</span></div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar glass-panel">
+        <div class="stat-item"><div class="stat-value" id="stat-area">0</div><div class="stat-label">المساحة م²</div></div>
+        <div class="stat-item"><div class="stat-value" id="stat-width">0</div><div class="stat-label">العرض سم</div></div>
+        <div class="stat-item"><div class="stat-value" id="stat-length">0</div><div class="stat-label">الطول سم</div></div>
+        <div class="stat-item"><div class="stat-value" id="stat-height">0</div><div class="stat-label">الارتفاع سم</div></div>
+        <div class="stat-item"><div class="stat-value" id="stat-walls">0</div><div class="stat-label">الجدران</div></div>
+        <div class="stat-item"><div class="stat-value" id="stat-doors">0</div><div class="stat-label">الأبواب</div></div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0a);
+        scene.fog = new THREE.Fog(0x0a0a0a, 600, 1800);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+        camera.position.set(450, 400, 450);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2.05;
+        controls.minDistance = 100;
+        controls.maxDistance = 900;
+        controls.target.set(0, 60, 0);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight.position.set(300, 500, 300);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 1200;
+        dirLight.shadow.camera.left = -400;
+        dirLight.shadow.camera.right = 400;
+        dirLight.shadow.camera.top = 400;
+        dirLight.shadow.camera.bottom = -400;
+        scene.add(dirLight);
+
+        const fillLight = new THREE.DirectionalLight(0x8888ff, 0.3);
+        fillLight.position.set(-200, 200, -200);
+        scene.add(fillLight);
+
+        // Materials
+        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xe8e0d5, roughness: 0.75, metalness: 0.05 });
+        const wallHiddenMaterial = new THREE.MeshStandardMaterial({ color: 0xe8e0d5, roughness: 0.75, metalness: 0.05, transparent: true, opacity: 0.15 });
+        const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xc4a882, roughness: 0.6, metalness: 0.05 });
+        const roofMaterial = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9, metalness: 0.05 });
+        const glassMaterial = new THREE.MeshPhysicalMaterial({ color: 0x88ccff, transparent: true, opacity: 0.25, roughness: 0.05, metalness: 0.1, transmission: 0.7 });
+        const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.65 });
+        const doorFrameMaterial = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.7 });
+        const selectedMaterial = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xf59e0b, emissiveIntensity: 0.3, roughness: 0.5 });
+
+        const roomColors = { bedroom: 0x90caf9, bathroom: 0x80cbc4, kitchen: 0xffcc80, living: 0xce93d8, corridor: 0xe0e0e0 };
+
+        // Groups
+        const caravanGroup = new THREE.Group();
+        scene.add(caravanGroup);
+        const wallsGroup = new THREE.Group();
+        const floorGroup = new THREE.Group();
+        const roofGroup = new THREE.Group();
+        const furnitureGroup = new THREE.Group();
+        const dimensionsGroup = new THREE.Group();
+        const doorsGroup = new THREE.Group();
+        caravanGroup.add(wallsGroup);
+        caravanGroup.add(floorGroup);
+        caravanGroup.add(roofGroup);
+        caravanGroup.add(furnitureGroup);
+        caravanGroup.add(dimensionsGroup);
+        caravanGroup.add(doorsGroup);
+
+        const gridHelper = new THREE.GridHelper(1000, 50, 0x333333, 0x1a1a1a);
+        gridHelper.position.y = -0.5;
+        scene.add(gridHelper);
+
+        let walls = [];
+        let doors = [];
+        let addDoorMode = false;
+        let addWallMode = false;
+        let wallIdCounter = 0;
+        let doorIdCounter = 0;
+
+        function showNotification(text) {
+            const notif = document.getElementById('notification');
+            notif.textContent = text;
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), 2500);
+        }
+
+        let dimensionObjects = [];
+        function clearDimensions() {
+            dimensionObjects.forEach(obj => {
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) { if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose()); else obj.material.dispose(); }
+                dimensionsGroup.remove(obj);
+            });
+            dimensionObjects = [];
+        }
+
+        function createDimensionLine(start, end, color = 0xf59e0b) {
+            const points = [start, end];
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ color: color, linewidth: 3 });
+            const line = new THREE.Line(geometry, material);
+            dimensionsGroup.add(line);
+            dimensionObjects.push(line);
+            return line;
+        }
+
+        function createDimensionLabel(text, position, size = 14) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 300; canvas.height = 80;
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.beginPath(); ctx.roundRect(0, 0, 300, 80, 12); ctx.fill();
+            ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(0, 0, 300, 80, 12); ctx.stroke();
+            ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 32px Tajawal, Arial';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 150, 40);
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.position.copy(position);
+            sprite.scale.set(size * 2.5, size * 0.65, 1);
+            dimensionsGroup.add(sprite);
+            dimensionObjects.push(sprite);
+        }
+
+        class Wall {
+            constructor(x, y, z, width, height, depth, rotateY = 0, name = '', isOuter = false) {
+                this.id = wallIdCounter++;
+                this.x = x; this.y = y; this.z = z;
+                this.width = width; this.height = height; this.depth = depth;
+                this.rotateY = rotateY;
+                this.name = name || `جدار ${this.id + 1}`;
+                this.isOuter = isOuter;
+                this.visible = true;
+                this.mesh = null;
+                this.createMesh();
+            }
+            createMesh() {
+                const geo = new THREE.BoxGeometry(this.width, this.height, this.depth);
+                this.mesh = new THREE.Mesh(geo, wallMaterial.clone());
+                this.mesh.position.set(this.x, this.y, this.z);
+                if (this.rotateY) this.mesh.rotation.y = this.rotateY;
+                this.mesh.castShadow = true;
+                this.mesh.receiveShadow = true;
+                this.mesh.userData = { type: 'wall', wallId: this.id };
+                wallsGroup.add(this.mesh);
+            }
+            updateVisibility() {
+                if (this.mesh) { this.mesh.visible = this.visible; this.mesh.material = this.visible ? wallMaterial : wallHiddenMaterial; }
+            }
+            remove() {
+                if (this.mesh) { wallsGroup.remove(this.mesh); this.mesh.geometry.dispose(); this.mesh.material.dispose(); }
+            }
+            highlight() { if (this.mesh && this.visible) { this.mesh.material = selectedMaterial; } }
+            unhighlight() { if (this.mesh) { this.mesh.material = this.visible ? wallMaterial : wallHiddenMaterial; } }
+        }
+
+        class Door {
+            constructor(wallId, offset, width = 30, height = 50, name = '') {
+                this.id = doorIdCounter++;
+                this.wallId = wallId; this.offset = offset;
+                this.width = width; this.height = height;
+                this.name = name || `باب ${this.id + 1}`;
+                this.mesh = null; this.frameMesh = null;
+                this.createMesh();
+            }
+            createMesh() {
+                const wall = walls.find(w => w.id === this.wallId);
+                if (!wall) return;
+                const frameGeo = new THREE.BoxGeometry(this.width + 4, this.height + 4, wall.depth + 2);
+                this.frameMesh = new THREE.Mesh(frameGeo, doorFrameMaterial);
+                const doorGeo = new THREE.BoxGeometry(this.width, this.height, 2);
+                this.mesh = new THREE.Mesh(doorGeo, doorMaterial);
+                const wallDir = new THREE.Vector3(Math.sin(wall.rotateY), 0, Math.cos(wall.rotateY));
+                const perpDir = new THREE.Vector3(-wallDir.z, 0, wallDir.x);
+                const basePos = new THREE.Vector3(wall.x, wall.y - wall.height/2 + this.height/2, wall.z);
+                const offsetVec = perpDir.clone().multiplyScalar(this.offset);
+                const finalPos = basePos.add(offsetVec);
+                this.frameMesh.position.copy(finalPos);
+                this.frameMesh.rotation.y = wall.rotateY;
+                this.frameMesh.userData = { type: 'door', doorId: this.id };
+                this.mesh.position.copy(finalPos);
+                this.mesh.position.y -= 2;
+                this.mesh.rotation.y = wall.rotateY;
+                this.mesh.userData = { type: 'door', doorId: this.id };
+                doorsGroup.add(this.frameMesh);
+                doorsGroup.add(this.mesh);
+            }
+            remove() {
+                if (this.frameMesh) { doorsGroup.remove(this.frameMesh); this.frameMesh.geometry.dispose(); }
+                if (this.mesh) { doorsGroup.remove(this.mesh); this.mesh.geometry.dispose(); }
+            }
+            highlight() { if (this.mesh) { this.mesh.material = selectedMaterial; } }
+            unhighlight() { if (this.mesh) { this.mesh.material = doorMaterial; } }
+        }
+
+        function buildCaravan() {
+            walls.forEach(w => w.remove());
+            doors.forEach(d => d.remove());
+            walls = []; doors = [];
+            floorGroup.clear(); roofGroup.clear(); furnitureGroup.clear();
+            clearDimensions();
+
+            const dims = {
+                totalWidth: parseFloat(document.getElementById('total-width').value),
+                totalLength: parseFloat(document.getElementById('total-length').value),
+                wallHeight: parseFloat(document.getElementById('wall-height').value),
+                bedroomLeftW: parseFloat(document.getElementById('bedroom-left-width').value),
+                bedroomLeftL: parseFloat(document.getElementById('bedroom-left-length').value),
+                bedroomRightW: parseFloat(document.getElementById('bedroom-right-width').value),
+                bedroomRightL: parseFloat(document.getElementById('bedroom-right-length').value),
+                corridorW: parseFloat(document.getElementById('corridor-width').value),
+                corridorL: parseFloat(document.getElementById('corridor-length').value),
+                bathroomW: parseFloat(document.getElementById('bathroom-width').value),
+                bathroomL: parseFloat(document.getElementById('bathroom-length').value),
+                kitchenW: parseFloat(document.getElementById('kitchen-width').value),
+                kitchenL: parseFloat(document.getElementById('kitchen-length').value),
+                livingW: parseFloat(document.getElementById('living-width').value),
+                livingL: parseFloat(document.getElementById('living-length').value),
+            };
+
+            const w = dims.totalWidth, l = dims.totalLength, h = dims.wallHeight;
+            const wallThickness = 3;
+
+            // Floor
+            const floorGeo = new THREE.BoxGeometry(w, 2, l);
+            const floor = new THREE.Mesh(floorGeo, floorMaterial);
+            floor.position.set(0, 1, 0);
+            floor.receiveShadow = true;
+            floorGroup.add(floor);
+
+            function createFloorSection(x, z, width, length, color) {
+                const geo = new THREE.BoxGeometry(width, 0.5, length);
+                const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.7 });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(x, 2.25, z);
+                mesh.receiveShadow = true;
+                floorGroup.add(mesh);
+            }
+
+            const frontSectionLength = Math.max(dims.bedroomLeftL, dims.bedroomRightL, dims.corridorL);
+
+            createFloorSection(-w/2 + dims.bedroomLeftW/2, -l/2 + dims.bedroomLeftL/2, dims.bedroomLeftW, dims.bedroomLeftL, roomColors.bedroom);
+            createFloorSection(w/2 - dims.bedroomRightW/2, -l/2 + dims.bedroomRightL/2, dims.bedroomRightW, dims.bedroomRightL, roomColors.bedroom);
+            createFloorSection(0, -l/2 + dims.corridorL/2, dims.corridorW, dims.corridorL, roomColors.corridor);
+            createFloorSection(w/2 - dims.bathroomW/2, -l/2 + dims.bedroomRightL + dims.bathroomL/2, dims.bathroomW, dims.bathroomL, roomColors.bathroom);
+            createFloorSection(-w/2 + dims.kitchenW/2, -l/2 + dims.bedroomLeftL + dims.kitchenL/2, dims.kitchenW, dims.kitchenL, roomColors.kitchen);
+            createFloorSection(0, l/2 - dims.livingL/2, dims.livingW, dims.livingL, roomColors.living);
+
+            // Outer walls
+            walls.push(new Wall(0, h/2, -l/2, w, h, wallThickness, 0, 'الجدار الأمامي', true));
+            walls.push(new Wall(0, h/2, l/2, w, h, wallThickness, 0, 'الجدار الخلفي', true));
+            walls.push(new Wall(-w/2, h/2, 0, wallThickness, h, l, 0, 'الجدار الأيسر', true));
+            walls.push(new Wall(w/2, h/2, 0, wallThickness, h, l, 0, 'الجدار الأيمن', true));
+
+            // Interior walls
+            walls.push(new Wall(-w/2 + dims.bedroomLeftW, h/2, -l/2 + frontSectionLength/2, wallThickness, h, frontSectionLength, 0, 'جدار غرفة النوم اليسرى'));
+            walls.push(new Wall(w/2 - dims.bedroomRightW, h/2, -l/2 + frontSectionLength/2, wallThickness, h, frontSectionLength, 0, 'جدار غرفة النوم اليمنى'));
+            walls.push(new Wall(-dims.corridorW/2, h/2, -l/2 + dims.corridorL + dims.kitchenL/2, wallThickness, h, dims.kitchenL, 0, 'جدار الممر الأيسر'));
+            walls.push(new Wall(dims.corridorW/2, h/2, -l/2 + dims.corridorL + dims.bathroomL/2, wallThickness, h, dims.bathroomL, 0, 'جدار الممر الأيمن'));
+            walls.push(new Wall(0, h/2, -l/2 + dims.bedroomLeftL + dims.kitchenL/2, w - dims.bedroomLeftW - dims.bedroomRightW, h, wallThickness, 0, 'جدار المطبخ/الحمام'));
+            walls.push(new Wall(-w/4, h/2, l/2 - dims.livingL, wallThickness, h, dims.livingW/2, 0, 'جدار المعيشة'));
+
+            // Roof
+            const roofGeo = new THREE.BoxGeometry(w + 4, 4, l + 4);
+            const roof = new THREE.Mesh(roofGeo, roofMaterial);
+            roof.position.set(0, h + 2, 0);
+            roof.castShadow = true;
+            roofGroup.add(roof);
+
+            // Windows
+            function createWindow(x, y, z, width, height, rotateY = 0) {
+                const geo = new THREE.BoxGeometry(width, height, 1);
+                const mesh = new THREE.Mesh(geo, glassMaterial);
+                mesh.position.set(x, y, z);
+                if (rotateY) mesh.rotation.y = rotateY;
+                wallsGroup.add(mesh);
+            }
+            createWindow(-w/2 + 10, h/2, -l/2 + dims.bedroomLeftL/2, 20, 30, Math.PI/2);
+            createWindow(w/2 - 10, h/2, -l/2 + dims.bedroomRightL/2, 20, 30, Math.PI/2);
+            createWindow(0, h/2, l/2 - 10, 40, 30);
+
+            // Furniture
+            if (document.getElementById('toggle-furniture').classList.contains('active')) {
+                function createBed(x, z, width, length) {
+                    const bedGeo = new THREE.BoxGeometry(width * 0.8, 8, length * 0.7);
+                    const bedMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
+                    const bed = new THREE.Mesh(bedGeo, bedMat);
+                    bed.position.set(x, 6, z);
+                    furnitureGroup.add(bed);
+                    const pillowGeo = new THREE.BoxGeometry(width * 0.6, 4, 10);
+                    const pillowMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                    const pillow = new THREE.Mesh(pillowGeo, pillowMat);
+                    pillow.position.set(x, 10, z - length * 0.25);
+                    furnitureGroup.add(pillow);
+                }
+                createBed(-w/2 + dims.bedroomLeftW/2, -l/2 + dims.bedroomLeftL/2, dims.bedroomLeftW, dims.bedroomLeftL);
+                createBed(w/2 - dims.bedroomRightW/2, -l/2 + dims.bedroomRightL/2, dims.bedroomRightW, dims.bedroomRightL);
+
+                const sofaGeo = new THREE.BoxGeometry(dims.livingW * 0.6, 12, 25);
+                const sofaMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+                const sofa = new THREE.Mesh(sofaGeo, sofaMat);
+                sofa.position.set(0, 8, l/2 - dims.livingL/2);
+                furnitureGroup.add(sofa);
+
+                const counterGeo = new THREE.BoxGeometry(dims.kitchenW * 0.8, 15, 20);
+                const counterMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+                const counter = new THREE.Mesh(counterGeo, counterMat);
+                counter.position.set(-w/2 + dims.kitchenW/2, 9.5, -l/2 + dims.bedroomLeftL + dims.kitchenL * 0.3);
+                furnitureGroup.add(counter);
+
+                const toiletGeo = new THREE.BoxGeometry(12, 15, 15);
+                const toiletMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                const toilet = new THREE.Mesh(toiletGeo, toiletMat);
+                toilet.position.set(w/2 - dims.bathroomW/2, 9.5, -l/2 + dims.bedroomRightL + dims.bathroomL * 0.3);
+                furnitureGroup.add(toilet);
+            }
+
+            // Dimensions
+            if (document.getElementById('toggle-dimensions').classList.contains('active')) {
+                createDimensionLine(new THREE.Vector3(-w/2, h + 25, -l/2 - 25), new THREE.Vector3(w/2, h + 25, -l/2 - 25));
+                createDimensionLabel(`${w} سم`, new THREE.Vector3(0, h + 35, -l/2 - 25), 16);
+                createDimensionLine(new THREE.Vector3(w/2 + 25, h + 25, -l/2), new THREE.Vector3(w/2 + 25, h + 25, l/2));
+                createDimensionLabel(`${l} سم`, new THREE.Vector3(w/2 + 35, h + 35, 0), 16);
+                createDimensionLine(new THREE.Vector3(w/2 + 35, 0, l/2 + 25), new THREE.Vector3(w/2 + 35, h, l/2 + 25));
+                createDimensionLabel(`${h} سم`, new THREE.Vector3(w/2 + 45, h/2, l/2 + 25), 12);
+            }
+
+            updateWallList();
+            updateDoorList();
+            updateStats();
+        }
+
+        function updateWallList() {
+            const list = document.getElementById('wall-list');
+            list.innerHTML = '';
+            walls.forEach(wall => {
+                const div = document.createElement('div');
+                div.className = `wall-editor-item ${!wall.visible ? 'hidden-wall' : ''}`;
+                div.innerHTML = `<div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🧱</span>
+                        <div>
+                            <div class="text-sm font-bold text-white">${wall.name}</div>
+                            <div class="text-xs text-gray-500">${wall.width}×${wall.height}×${wall.depth} سم</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-1">
+                        <button class="btn-icon ${wall.visible ? 'btn-hide' : 'btn-show'}" onclick="toggleWall(${wall.id})" title="${wall.visible ? 'إخفاء' : 'إظهار'}">${wall.visible ? '👁️' : '🚫'}</button>
+                        ${!wall.isOuter ? `<button class="btn-icon btn-delete" onclick="deleteWall(${wall.id})" title="حذف">🗑️</button>` : ''}
+                    </div>
+                </div>`;
+                list.appendChild(div);
+            });
+        }
+
+        function updateDoorList() {
+            const list = document.getElementById('door-list');
+            list.innerHTML = '';
+            doors.forEach(door => {
+                const wall = walls.find(w => w.id === door.wallId);
+                const div = document.createElement('div');
+                div.className = 'door-editor-item';
+                div.innerHTML = `<div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🚪</span>
+                        <div>
+                            <div class="text-sm font-bold text-white">${door.name}</div>
+                            <div class="text-xs text-gray-500">في ${wall ? wall.name : 'جدار محذوف'} • ${door.width}×${door.height} سم</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-1">
+                        <button class="btn-icon btn-delete" onclick="deleteDoor(${door.id})" title="حذف">🗑️</button>
+                    </div>
+                </div>`;
+                list.appendChild(div);
+            });
+        }
+
+        function updateStats() {
+            const w = parseFloat(document.getElementById('total-width').value);
+            const l = parseFloat(document.getElementById('total-length').value);
+            const h = parseFloat(document.getElementById('wall-height').value);
+            document.getElementById('stat-area').textContent = ((w * l) / 10000).toFixed(2);
+            document.getElementById('stat-width').textContent = w;
+            document.getElementById('stat-length').textContent = l;
+            document.getElementById('stat-height').textContent = h;
+            document.getElementById('stat-walls').textContent = walls.length;
+            document.getElementById('stat-doors').textContent = doors.length;
+        }
+
+        window.toggleWall = function(id) {
+            const wall = walls.find(w => w.id === id);
+            if (wall) {
+                wall.visible = !wall.visible;
+                wall.updateVisibility();
+                updateWallList();
+                showNotification(wall.visible ? `✅ ${wall.name} ظاهر` : `🚫 ${wall.name} مخفي`);
+            }
+        };
+
+        window.deleteWall = function(id) {
+            const wall = walls.find(w => w.id === id);
+            if (wall && !wall.isOuter) {
+                wall.remove();
+                walls = walls.filter(w => w.id !== id);
+                const attachedDoors = doors.filter(d => d.wallId === id);
+                attachedDoors.forEach(d => d.remove());
+                doors = doors.filter(d => d.wallId !== id);
+                updateWallList();
+                updateDoorList();
+                updateStats();
+                showNotification('🗑️ تم حذف الجدار والأبواب المرتبطة به');
+            }
+        };
+
+        window.deleteDoor = function(id) {
+            const door = doors.find(d => d.id === id);
+            if (door) {
+                door.remove();
+                doors = doors.filter(d => d.id !== id);
+                updateDoorList();
+                updateStats();
+                showNotification('🗑️ تم حذف الباب');
+            }
+        };
+
+        // Add door mode
+        document.getElementById('btn-add-door').addEventListener('click', function() {
+            addDoorMode = !addDoorMode;
+            addWallMode = false;
+            document.getElementById('mode-add-door').classList.toggle('active', addDoorMode);
+            document.getElementById('mode-add-wall').classList.remove('active');
+            if (addDoorMode) {
+                showNotification('🚪 انقر على الجدار لإضافة باب');
+                renderer.domElement.style.cursor = 'crosshair';
+            } else {
+                renderer.domElement.style.cursor = 'default';
+            }
+        });
+
+        // Add wall mode
+        document.getElementById('btn-add-wall').addEventListener('click', function() {
+            addWallMode = !addWallMode;
+            addDoorMode = false;
+            document.getElementById('mode-add-wall').classList.toggle('active', addWallMode);
+            document.getElementById('mode-add-door').classList.remove('active');
+            if (addWallMode) {
+                showNotification('🧱 انقر نقطتين لإضافة جدار جديد');
+                renderer.domElement.style.cursor = 'crosshair';
+            } else {
+                renderer.domElement.style.cursor = 'default';
+            }
+        });
+
+        // Remove all
+        document.getElementById('btn-remove-all-walls').addEventListener('click', function() {
+            const interiorWalls = walls.filter(w => !w.isOuter);
+            interiorWalls.forEach(w => w.remove());
+            walls = walls.filter(w => w.isOuter);
+            doors.forEach(d => d.remove());
+            doors = [];
+            updateWallList();
+            updateDoorList();
+            updateStats();
+            showNotification('🗑️ تم حذف جميع الجدران الداخلية');
+        });
+
+        document.getElementById('btn-remove-all-doors').addEventListener('click', function() {
+            doors.forEach(d => d.remove());
+            doors = [];
+            updateDoorList();
+            updateStats();
+            showNotification('🗑️ تم حذف جميع الأبواب');
+        });
+
+        // Raycaster for clicking
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let clickStart = null;
+
+        renderer.domElement.addEventListener('mousedown', (event) => {
+            if (!addDoorMode && !addWallMode) return;
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            if (addWallMode) {
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(floorGroup.children);
+                if (intersects.length > 0) {
+                    clickStart = intersects[0].point;
+                }
+            }
+        });
+
+        renderer.domElement.addEventListener('mouseup', (event) => {
+            if (addDoorMode) {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(wallsGroup.children);
+                if (intersects.length > 0) {
+                    const obj = intersects[0].object;
+                    if (obj.userData.type === 'wall') {
+                        const wall = walls.find(w => w.id === obj.userData.wallId);
+                        if (wall) {
+                            const wallCenter = new THREE.Vector3(wall.x, 0, wall.z);
+                            const clickPoint = intersects[0].point;
+                            const offset = clickPoint.distanceTo(wallCenter);
+                            const newDoor = new Door(wall.id, offset * 0.6, 30, 50);
+                            doors.push(newDoor);
+                            updateDoorList();
+                            updateStats();
+                            showNotification(`🚪 تم إضافة باب في ${wall.name}`);
+                        }
+                    }
+                }
+                addDoorMode = false;
+                document.getElementById('mode-add-door').classList.remove('active');
+                renderer.domElement.style.cursor = 'default';
+            }
+
+            if (addWallMode && clickStart) {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(floorGroup.children);
+                if (intersects.length > 0) {
+                    const endPoint = intersects[0].point;
+                    const dx = endPoint.x - clickStart.x;
+                    const dz = endPoint.z - clickStart.z;
+                    const length = Math.sqrt(dx * dx + dz * dz);
+                    const angle = Math.atan2(dx, dz);
+                    if (length > 20) {
+                        const midX = (clickStart.x + endPoint.x) / 2;
+                        const midZ = (clickStart.z + endPoint.z) / 2;
+                        const h = parseFloat(document.getElementById('wall-height').value);
+                        const newWall = new Wall(midX, h/2, midZ, 3, h, length, angle, `جدار جديد ${wallIdCounter + 1}`);
+                        walls.push(newWall);
+                        updateWallList();
+                        updateStats();
+                        showNotification('🧱 تم إضافة جدار جديد');
+                    }
+                }
+                clickStart = null;
+                addWallMode = false;
+                document.getElementById('mode-add-wall').classList.remove('active');
+                renderer.domElement.style.cursor = 'default';
+            }
+        });
+
+        // Hover effect
+        renderer.domElement.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            walls.forEach(w => w.unhighlight());
+            doors.forEach(d => d.unhighlight());
+
+            if (addDoorMode) {
+                const wallIntersects = raycaster.intersectObjects(wallsGroup.children);
+                if (wallIntersects.length > 0) {
+                    const obj = wallIntersects[0].object;
+                    if (obj.userData.type === 'wall') {
+                        const wall = walls.find(w => w.id === obj.userData.wallId);
+                        if (wall) wall.highlight();
+                    }
+                    renderer.domElement.style.cursor = 'pointer';
+                } else {
+                    renderer.domElement.style.cursor = 'crosshair';
+                }
+            } else if (addWallMode && clickStart) {
+                renderer.domElement.style.cursor = 'crosshair';
+            } else {
+                renderer.domElement.style.cursor = 'default';
+            }
+
+            // Tooltip
+            const tooltip = document.getElementById('tooltip');
+            const allIntersects = raycaster.intersectObjects(caravanGroup.children, true);
+            if (allIntersects.length > 0) {
+                const obj = allIntersects[0].object;
+                let text = '';
+                if (obj.userData.type === 'wall') {
+                    const wall = walls.find(w => w.id === obj.userData.wallId);
+                    if (wall) text = `🧱 ${wall.name}`;
+                } else if (obj.userData.type === 'door') {
+                    const door = doors.find(d => d.id === obj.userData.doorId);
+                    if (door) text = `🚪 ${door.name}`;
+                }
+                if (text) {
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = event.clientX + 15 + 'px';
+                    tooltip.style.top = event.clientY + 15 + 'px';
+                    tooltip.textContent = text;
+                } else {
+                    tooltip.style.display = 'none';
+                }
+            } else {
+                tooltip.style.display = 'none';
+            }
+        });
+
+        // Toggle visibility groups
+        function toggleVisibility(group, btn) {
+            group.visible = !group.visible;
+            btn.classList.toggle('active');
+        }
+
+        document.getElementById('toggle-walls').addEventListener('click', function() {
+            toggleVisibility(wallsGroup, this);
+        });
+        document.getElementById('toggle-floor').addEventListener('click', function() {
+            toggleVisibility(floorGroup, this);
+        });
+        document.getElementById('toggle-roof').addEventListener('click', function() {
+            toggleVisibility(roofGroup, this);
+        });
+        document.getElementById('toggle-dimensions').addEventListener('click', function() {
+            this.classList.toggle('active');
+            buildCaravan();
+        });
+        document.getElementById('toggle-furniture').addEventListener('click', function() {
+            this.classList.toggle('active');
+            buildCaravan();
+        });
+
+        // View buttons
+        function setView(position, target) {
+            camera.position.set(position.x, position.y, position.z);
+            controls.target.set(target.x, target.y, target.z);
+            controls.update();
+        }
+
+        document.getElementById('view-3d').addEventListener('click', function() {
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active-view'));
+            this.classList.add('active-view');
+            setView({x: 450, y: 400, z: 450}, {x: 0, y: 60, z: 0});
+        });
+        document.getElementById('view-top').addEventListener('click', function() {
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active-view'));
+            this.classList.add('active-view');
+            setView({x: 0, y: 700, z: 0}, {x: 0, y: 0, z: 0});
+        });
+        document.getElementById('view-front').addEventListener('click', function() {
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active-view'));
+            this.classList.add('active-view');
+            setView({x: 0, y: 250, z: 700}, {x: 0, y: 100, z: 0});
+        });
+        document.getElementById('view-side').addEventListener('click', function() {
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active-view'));
+            this.classList.add('active-view');
+            setView({x: 700, y: 250, z: 0}, {x: 0, y: 100, z: 0});
+        });
+        document.getElementById('reset-view').addEventListener('click', function() {
+            document.getElementById('view-3d').click();
+        });
+
+        // Input listeners
+        const inputs = document.querySelectorAll('.dimension-input');
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                buildCaravan();
+            });
+        });
+
+        // Export
+        document.getElementById('export-btn').addEventListener('click', function() {
+            const data = {
+                dimensions: {},
+                walls: walls.map(w => ({
+                    id: w.id, name: w.name, x: w.x, y: w.y, z: w.z,
+                    width: w.width, height: w.height, depth: w.depth,
+                    rotateY: w.rotateY, visible: w.visible, isOuter: w.isOuter
+                })),
+                doors: doors.map(d => ({
+                    id: d.id, name: d.name, wallId: d.wallId,
+                    offset: d.offset, width: d.width, height: d.height
+                }))
+            };
+            inputs.forEach(input => { data.dimensions[input.id] = input.value; });
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'caravan-plan.json';
+            a.click();
+            showNotification('💾 تم حفظ المخطط');
+        });
+
+        // Print
+        document.getElementById('print-btn').addEventListener('click', function() {
+            window.print();
+        });
+
+        // Initial build
+        buildCaravan();
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
