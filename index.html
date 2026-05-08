@@ -1,72 +1,116 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>مخطط قابل للتعديل</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مخطط هندسي تفاعلي</title>
+<link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <header>
-  <h1>مخطط هندسي قابل للتعديل</h1>
-  <p>جميع المقاسات بالسم</p>
+  <h1>مخطط هندسي تفاعلي</h1>
+  <p>نسخة جوال + تعديل مباشر للمقاسات</p>
 </header>
 
-<main>
+<div class="controls">
 
-<section class="controls">
-  <button onclick="downloadSVG()">تحميل SVG</button>
-  <button onclick="window.print()">طباعة</button>
-</section>
+  <div class="input-group">
+    <label>العرض الخارجي (سم)</label>
+    <input type="range" min="150" max="500" value="220" id="widthRange">
+    <span id="widthValue">220 سم</span>
+  </div>
 
-<section class="canvas-wrapper">
+  <div class="input-group">
+    <label>الارتفاع (سم)</label>
+    <input type="range" min="150" max="500" value="200" id="heightRange">
+    <span id="heightValue">200 سم</span>
+  </div>
 
-<svg id="floorplan" viewBox="0 0 900 1600">
+  <div class="input-group">
+    <label>عرض الحمام (سم)</label>
+    <input type="range" min="50" max="200" value="95" id="bathroomRange">
+    <span id="bathroomValue">95 سم</span>
+  </div>
 
-  <rect x="180" y="80" rx="40" ry="40" width="540" height="1280" class="wall" />
+</div>
 
-  <line x1="360" y1="120" x2="360" y2="650" class="inner-wall" />
-  <line x1="540" y1="120" x2="540" y2="650" class="inner-wall" />
+<div class="canvas">
 
-  <line x1="360" y1="200" x2="540" y2="200" class="inner-wall" />
+<svg id="floorplan" viewBox="0 0 900 1400">
 
-  <line x1="180" y1="650" x2="360" y2="650" class="inner-wall" />
+  <rect
+    id="outerWall"
+    x="180"
+    y="80"
+    rx="30"
+    ry="30"
+    width="540"
+    height="1100"
+    class="wall"
+  />
 
-  <line x1="180" y1="650" x2="180" y2="980" class="inner-wall" />
-  <line x1="180" y1="980" x2="260" y2="980" class="inner-wall" />
+  <line x1="360" y1="120" x2="360" y2="600" class="inner-wall"/>
+  <line x1="540" y1="120" x2="540" y2="600" class="inner-wall"/>
 
-  <line x1="540" y1="650" x2="720" y2="650" class="inner-wall" />
+  <rect
+    id="bathroom"
+    x="540"
+    y="700"
+    width="180"
+    height="220"
+    class="inner-wall"
+  />
 
-  <line x1="540" y1="730" x2="720" y2="730" class="inner-wall" />
-  <rect x="540" y="730" width="180" height="260" class="inner-wall" />
+  <text
+    id="topLabel"
+    x="450"
+    y="55"
+    text-anchor="middle"
+    class="dimension"
+  >
+    220 سم
+  </text>
 
-  <rect x="560" y="1030" width="100" height="70" class="inner-wall" />
+  <text
+    id="sideLabel"
+    x="760"
+    y="550"
+    transform="rotate(90 760 550)"
+    class="dimension"
+  >
+    200 سم
+  </text>
 
-  <line x1="180" y1="1100" x2="720" y2="1100" class="inner-wall" />
+  <text
+    id="bathroomLabel"
+    x="630"
+    y="820"
+    text-anchor="middle"
+    class="label"
+  >
+    حمام 95 سم
+  </text>
 
-  <path d="M360 820 A120 120 0 0 0 260 920" class="door" />
-
-  <text x="450" y="60" text-anchor="middle" class="dimension">220 سم</text>
-  <text x="250" y="420" transform="rotate(-90 250 420)" class="dimension">200 سم</text>
-  <text x="670" y="420" transform="rotate(90 670 420)" class="dimension">200 سم</text>
-
-  <text x="445" y="170" text-anchor="middle" class="dimension">40</text>
-
-  <text x="300" y="670" class="dimension">85</text>
-  <text x="580" y="670" class="dimension">85</text>
-
-  <text x="640" y="860" text-anchor="middle" class="label">حمام</text>
-  <text x="640" y="920" text-anchor="middle" class="dimension">95 سم</text>
-
-  <text x="610" y="1080" text-anchor="middle" class="label">مغسلة</text>
-
-  <text x="450" y="1260" text-anchor="middle" class="label">جلسة سرير</text>
+  <text
+    x="450"
+    y="1100"
+    text-anchor="middle"
+    class="label"
+  >
+    جلسة سرير
+  </text>
 
 </svg>
 
-</section>
-</main>
+</div>
+
+<div class="buttons">
+  <button onclick="downloadSVG()">تحميل SVG</button>
+  <button onclick="window.print()">طباعة</button>
+</div>
 
 <script src="script.js"></script>
 
