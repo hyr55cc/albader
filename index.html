@@ -1,28 +1,77 @@
-<!doctype html>
-<html lang="ar">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#1a5f4a" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="تسبيح" />
-    <meta name="description" content="تطبيق الاستغفار والتسبيح اليومي" />
-    <title>تسبيح - MOZN</title>
-    <link rel="icon" type="image/png" href="./icon-192.png" />
-    <link rel="apple-touch-icon" href="./icon-192.png" />
-    <link rel="manifest" href="./manifest.json" />
-    <script type="module" crossorigin src="./assets/index-BL4mPxny.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-rXTwOkLy.css">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js');
-        });
-      }
-    </script>
-  </body>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التقويم الهجري والميلادي</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- مكتبة moment.js للتاريخ الميلادي -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/ar.min.js"></script>
+    <!-- مكتبة moment-hijri للتاريخ الهجري -->
+    <script src="https://cdn.jsdelivr.net/npm/moment-hijri@2.1.2/moment-hijri.min.js"></script>
+<base target="_blank">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📅 التقويم المزدوج</h1>
+            <div class="date-display">
+                <div class="hijri-box">
+                    <span class="label">التاريخ الهجري</span>
+                    <span id="hijriDate" class="date-text"></span>
+                </div>
+                <div class="gregorian-box">
+                    <span class="label">التاريخ الميلادي</span>
+                    <span id="gregorianDate" class="date-text"></span>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="calendar-controls">
+                <button id="prevMonth">◀ الشهر السابق</button>
+                <h2 id="currentMonthYear"></h2>
+                <button id="nextMonth">الشهر التالي ▶</button>
+            </div>
+
+            <div class="calendars-wrapper">
+                <!-- التقويم الهجري -->
+                <div class="calendar-section hijri-section">
+                    <h3>🌙 التقويم الهجري</h3>
+                    <div class="calendar-grid" id="hijriCalendar"></div>
+                </div>
+
+                <!-- التقويم الميلادي -->
+                <div class="calendar-section gregorian-section">
+                    <h3>☀️ التقويم الميلادي</h3>
+                    <div class="calendar-grid" id="gregorianCalendar"></div>
+                </div>
+            </div>
+
+            <!-- قسم المواعيد -->
+            <div class="appointments-section">
+                <h3>📋 المواعيد والتنبيهات</h3>
+                <div class="add-appointment">
+                    <input type="text" id="appTitle" placeholder="عنوان الموعد">
+                    <input type="date" id="appDate">
+                    <input type="time" id="appTime">
+                    <button onclick="addAppointment()">إضافة موعد</button>
+                </div>
+                <div id="appointmentsList" class="appointments-list"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- نافذة الإشعار -->
+    <div id="notification" class="notification hidden">
+        <div class="notification-content">
+            <span class="close-btn" onclick="closeNotification()">×</span>
+            <h4>🔔 تذكير!</h4>
+            <p id="notificationText"></p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>
