@@ -1,77 +1,255 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>التقويم الهجري والميلادي</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- مكتبة moment.js للتاريخ الميلادي -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/ar.min.js"></script>
-    <!-- مكتبة moment-hijri للتاريخ الهجري -->
-    <script src="https://cdn.jsdelivr.net/npm/moment-hijri@2.1.2/moment-hijri.min.js"></script>
-<base target="_blank">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>📅 التقويم المزدوج</h1>
-            <div class="date-display">
-                <div class="hijri-box">
-                    <span class="label">التاريخ الهجري</span>
-                    <span id="hijriDate" class="date-text"></span>
-                </div>
-                <div class="gregorian-box">
-                    <span class="label">التاريخ الميلادي</span>
-                    <span id="gregorianDate" class="date-text"></span>
-                </div>
+// تهيئة المكتبات
+moment.locale('ar');
+
+let currentDate = moment();
+let appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+
+// عرض التاريخ الحالي في الهيدر
+function updateHeaderDates() {
+    const hijri = moment().format('iYYYY/iM/iD') + ' هـ';
+    const gregorian = moment().format('YYYY/M/D') + ' م';
+    
+    document.getElementById('hijriDate').textContent = hijri;
+    document.getElementById('gregorianDate').textContent = gregorian;
+}
+
+// إنشاء التقويم الهجري
+function renderHijriCalendar() {
+    const year = currentDate.iYear();
+    const month = currentDate.iMonth();
+    
+    const startOfMonth = moment(`${year}-${month+1}-1`, 'iYYYY-iM-iD');
+    const daysInMonth = moment.iDaysInMonth(year, month);
+    const firstDayOfWeek = startOfMonth.day();
+    
+    let html = '';
+    const days = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+    
+    days.forEach(day => {
+        html += `<div class="day-header">${day}</div>`;
+    });
+    
+    // خلايا فارغة قبل بداية الشهر
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        html += `<div class="day-cell other-month"></div>`;
+    }
+    
+    // أيام الشهر
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = moment(`${year}-${month+1}-${day}`, 'iYYYY-iM-iD');
+        const isToday = date.isSame(moment(), 'day');
+        const gregorianDate = date.format('D/M');
+        const hasApp = hasAppointment(date);
+        
+        html += `
+            <div class="day-cell ${isToday ? 'today' : ''} ${hasApp ? 'has-appointment' : ''}" 
+                 onclick="selectDate('${date.format('YYYY-MM-DD')}')">
+                <span>${day}</span>
+                <span class="dual-date">${gregorianDate}</span>
             </div>
-        </header>
+        `;
+    }
+    
+    document.getElementById('hijriCalendar').innerHTML = html;
+    document.getElementById('currentMonthYear').textContent = 
+        `${startOfMonth.format('iMMMM iYYYY')} هـ - ${startOfMonth.format('MMMM YYYY')} م`;
+}
 
-        <main>
-            <div class="calendar-controls">
-                <button id="prevMonth">◀ الشهر السابق</button>
-                <h2 id="currentMonthYear"></h2>
-                <button id="nextMonth">الشهر التالي ▶</button>
+// إنشاء التقويم الميلادي
+function renderGregorianCalendar() {
+    const year = currentDate.year();
+    const month = currentDate.month();
+    
+    const startOfMonth = moment([year, month, 1]);
+    const daysInMonth = startOfMonth.daysInMonth();
+    const firstDayOfWeek = startOfMonth.day();
+    
+    let html = '';
+    const days = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+    
+    days.forEach(day => {
+        html += `<div class="day-header">${day}</div>`;
+    });
+    
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        html += `<div class="day-cell other-month"></div>`;
+    }
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = moment([year, month, day]);
+        const isToday = date.isSame(moment(), 'day');
+        const hijriDate = date.format('iD/iM');
+        const hasApp = hasAppointment(date);
+        
+        html += `
+            <div class="day-cell ${isToday ? 'today' : ''} ${hasApp ? 'has-appointment' : ''}"
+                 onclick="selectDate('${date.format('YYYY-MM-DD')}')">
+                <span>${day}</span>
+                <span class="dual-date">${hijriDate}</span>
             </div>
+        `;
+    }
+    
+    document.getElementById('gregorianCalendar').innerHTML = html;
+}
 
-            <div class="calendars-wrapper">
-                <!-- التقويم الهجري -->
-                <div class="calendar-section hijri-section">
-                    <h3>🌙 التقويم الهجري</h3>
-                    <div class="calendar-grid" id="hijriCalendar"></div>
-                </div>
+// التحقق من وجود موعد
+function hasAppointment(date) {
+    const dateStr = date.format('YYYY-MM-DD');
+    return appointments.some(app => app.date === dateStr);
+}
 
-                <!-- التقويم الميلادي -->
-                <div class="calendar-section gregorian-section">
-                    <h3>☀️ التقويم الميلادي</h3>
-                    <div class="calendar-grid" id="gregorianCalendar"></div>
+// التنقل بين الأشهر
+document.getElementById('prevMonth').addEventListener('click', () => {
+    currentDate.subtract(1, 'month');
+    renderCalendars();
+});
+
+document.getElementById('nextMonth').addEventListener('click', () => {
+    currentDate.add(1, 'month');
+    renderCalendars();
+});
+
+function renderCalendars() {
+    renderHijriCalendar();
+    renderGregorianCalendar();
+}
+
+// إضافة موعد
+function addAppointment() {
+    const title = document.getElementById('appTitle').value;
+    const date = document.getElementById('appDate').value;
+    const time = document.getElementById('appTime').value;
+    
+    if (!title || !date || !time) {
+        alert('الرجاء ملء جميع الحقول');
+        return;
+    }
+    
+    const appointment = {
+        id: Date.now(),
+        title,
+        date,
+        time,
+        notified: false
+    };
+    
+    appointments.push(appointment);
+    localStorage.setItem('appointments', JSON.stringify(appointments));
+    
+    document.getElementById('appTitle').value = '';
+    document.getElementById('appDate').value = '';
+    document.getElementById('appTime').value = '';
+    
+    renderAppointments();
+    renderCalendars();
+    
+    // طلب إذن الإشعارات
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+}
+
+// عرض المواعيد
+function renderAppointments() {
+    const list = document.getElementById('appointmentsList');
+    const now = moment();
+    
+    // ترتيب المواعيد حسب التاريخ
+    const sorted = appointments.sort((a, b) => {
+        return moment(a.date + ' ' + a.time).diff(moment(b.date + ' ' + b.time));
+    });
+    
+    if (sorted.length === 0) {
+        list.innerHTML = '<p style="text-align:center; opacity:0.7;">لا توجد مواعيد</p>';
+        return;
+    }
+    
+    list.innerHTML = sorted.map(app => {
+        const appDateTime = moment(app.date + ' ' + app.time);
+        const isUpcoming = appDateTime.diff(now, 'hours') <= 24 && appDateTime.diff(now, 'hours') > 0;
+        const isPast = appDateTime.isBefore(now);
+        
+        return `
+            <div class="appointment-item ${isUpcoming ? 'upcoming' : ''}" style="${isPast ? 'opacity:0.5;' : ''}">
+                <div>
+                    <strong>${app.title}</strong>
+                    <div class="time">${app.date} | ${app.time}</div>
                 </div>
+                <button class="delete-btn" onclick="deleteAppointment(${app.id})">حذف</button>
             </div>
+        `;
+    }).join('');
+}
 
-            <!-- قسم المواعيد -->
-            <div class="appointments-section">
-                <h3>📋 المواعيد والتنبيهات</h3>
-                <div class="add-appointment">
-                    <input type="text" id="appTitle" placeholder="عنوان الموعد">
-                    <input type="date" id="appDate">
-                    <input type="time" id="appTime">
-                    <button onclick="addAppointment()">إضافة موعد</button>
-                </div>
-                <div id="appointmentsList" class="appointments-list"></div>
-            </div>
-        </main>
-    </div>
+// حذف موعد
+function deleteAppointment(id) {
+    appointments = appointments.filter(app => app.id !== id);
+    localStorage.setItem('appointments', JSON.stringify(appointments));
+    renderAppointments();
+    renderCalendars();
+}
 
-    <!-- نافذة الإشعار -->
-    <div id="notification" class="notification hidden">
-        <div class="notification-content">
-            <span class="close-btn" onclick="closeNotification()">×</span>
-            <h4>🔔 تذكير!</h4>
-            <p id="notificationText"></p>
-        </div>
-    </div>
+// اختيار تاريخ من التقويم
+function selectDate(date) {
+    document.getElementById('appDate').value = date;
+    document.getElementById('appTitle').focus();
+}
 
-    <script src="script.js"></script>
-</body>
-</html>
+// التحقق من المواعيد القادمة (كل دقيقة)
+function checkAppointments() {
+    const now = moment();
+    
+    appointments.forEach(app => {
+        if (app.notified) return;
+        
+        const appTime = moment(app.date + ' ' + app.time);
+        const diffMinutes = appTime.diff(now, 'minutes');
+        
+        // تنبيه قبل 5 دقائق
+        if (diffMinutes <= 5 && diffMinutes > 0) {
+            app.notified = true;
+            localStorage.setItem('appointments', JSON.stringify(appointments));
+            
+            // إشعار داخل الموقع
+            showNotification(`موعد قريب: ${app.title} بعد ${diffMinutes} دقيقة!`);
+            
+            // إشعار نظام التشغيل
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('🔔 تذكير بالموعد', {
+                    body: `${app.title} - الساعة ${app.time}`,
+                    icon: '📅'
+                });
+            }
+        }
+    });
+}
+
+// عرض الإشعار
+function showNotification(text) {
+    const notif = document.getElementById('notification');
+    document.getElementById('notificationText').textContent = text;
+    notif.classList.remove('hidden');
+    
+    setTimeout(() => {
+        notif.classList.add('hidden');
+    }, 5000);
+}
+
+function closeNotification() {
+    document.getElementById('notification').classList.add('hidden');
+}
+
+// تهيئة
+updateHeaderDates();
+renderCalendars();
+renderAppointments();
+
+// تحديث كل دقيقة
+setInterval(() => {
+    checkAppointments();
+    updateHeaderDates();
+}, 60000);
+
+// تحديث فوري
+checkAppointments();
