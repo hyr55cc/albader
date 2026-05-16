@@ -293,7 +293,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Tajawa
   </div>
   <div class="topbar-actions">
     <button class="tbn" id="darkBtn" onclick="toggleDark()">🌙</button>
-    <button class="tbn" onclick="goPage('settings')">⚙️</button>
   </div>
 </div>
 
@@ -394,6 +393,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Tajawa
     </div>
 
     <div class="sg">
+      <div class="sg-title">لون الثيم 🎨</div>
+      <div class="sr"><div class="sr-info"><div class="sr-l">اختر اللون المفضل</div></div></div>
+      <div class="theme-swatches" id="themeSwatches">
+        <div class="swatch" style="background:#1a73e8" onclick="selTheme('blue')"></div>
+        <div class="swatch" style="background:#7c3aed" onclick="selTheme('purple')"></div>
+        <div class="swatch" style="background:#0f7a5a" onclick="selTheme('green')"></div>
+        <div class="swatch" style="background:#e11d48" onclick="selTheme('rose')"></div>
+        <div class="swatch" style="background:#b45309" onclick="selTheme('amber')"></div>
+        <div class="swatch" style="background:#334155" onclick="selTheme('slate')"></div>
+      </div>
+    </div>
+
+    <div class="sg">
       <div class="sg-title">معلومات</div>
       <div class="sr"><div class="sr-info"><div class="sr-l">الإصدار</div><div class="sr-s">بدر البدور v2.1 — طريقة أم القرى</div></div></div>
     </div>
@@ -412,6 +424,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Tajawa
 
 </div><!-- /app -->
 <div id="MC"></div>
+<div id="toast" class="toast"></div>
 
 <script>
 // ══ HIJRI (Umm Al-Qura accurate) ══════════════════════
@@ -456,7 +469,7 @@ const ld=k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}};
 const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 
 let dark=ld('dk')===true;
-let cfg=Object.assign({notifMed:true,notifEvent:true,notifHoliday:true,sound:'gentle',remind:10,fsize:'md',hnum:'arabic',gnum:'western'},ld('cfg')||{});
+let cfg=Object.assign({notifMed:true,notifEvent:true,notifHoliday:true,sound:'gentle',remind:10,fsize:'md',hnum:'arabic',gnum:'western',theme:'blue'},ld('cfg')||{});
 let meds=ld('meds')||[];
 let evts=ld('evts')||[];
 const today=new Date();
@@ -485,6 +498,19 @@ function rerCalCur(){
   rHero();
 }
 
+// Toast
+function showToast(msg){var t=document.getElementById("toast");if(!t)return;t.textContent=msg;t.classList.add("show");setTimeout(function(){t.classList.remove("show");},2500);}
+// Theme
+function selTheme(t){cfg.theme=t;upS("theme",t);applyThemeColor();rSettings();}
+function applyThemeColor(){document.documentElement.setAttribute("data-theme",cfg.theme||"blue");var sw=document.getElementById("themeSwatches");if(!sw)return;var names=["blue","purple","green","rose","amber","slate"];sw.querySelectorAll(".swatch").forEach(function(s,i){s.classList.toggle("on",cfg.theme===names[i]);});}
+// Moon
+function getMoonPhase(date){var known=new Date(2000,0,6).getTime();var diff=(date.getTime()-known)/(86400000);var phase=diff%29.53059;if(phase<0)phase+=29.53059;if(phase<1.85)return{emoji:"🌑",name:"محاق"};if(phase<5.53)return{emoji:"🌒",name:"هلال متزايد"};if(phase<9.22)return{emoji:"🌓",name:"تربيع أول"};if(phase<12.91)return{emoji:"🌔",name:"أحدب متزايد"};if(phase<16.61)return{emoji:"🌕",name:"بدر"};if(phase<20.30)return{emoji:"🌖",name:"أحدب متناقص"};if(phase<23.99)return{emoji:"🌗",name:"تربيع أخير"};if(phase<27.68)return{emoji:"🌘",name:"هلال متناقص"};return{emoji:"🌑",name:"محاق"};}
+// ICS export
+function exportToCalendar(name,date,time){var dt=date.replace(/-/g,"");var s,e;if(time){var p=time.split(":");s=dt+"T"+p[0]+p[1]+"00";e=dt+"T"+String((+p[0]+1)%24).padStart(2,"0")+p[1]+"00";}else{s=dt;e=dt;}var ics="BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Badr//AR\r\nBEGIN:VEVENT\r\nUID:"+Date.now()+"@badr\r\n"+(time?"DTSTART:"+s:"DTSTART;VALUE=DATE:"+s)+"\r\n"+(time?"DTEND:"+e:"DTEND;VALUE=DATE:"+e)+"\r\nSUMMARY:"+name+"\r\nEND:VEVENT\r\nEND:VCALENDAR";var blob=new Blob([ics],{type:"text/calendar"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name+".ics";a.click();URL.revokeObjectURL(a.href);showToast("✅ تم التصدير — افتح الملف لإضافته للتقويم");}
+// WhatsApp
+function shareWhatsapp(name,date,time){var p=date.split("-");var gd=new Date(+p[0],+p[1]-1,+p[2]);var hi=g2h(gd.getFullYear(),gd.getMonth(),gd.getDate());var hStr=ar(hi.d)+" "+HM[hi.m]+" "+ar(hi.y)+"هـ";var gStr=gd.getDate()+" "+GM[gd.getMonth()]+" "+gd.getFullYear()+"م";var tStr=time?"\n⏰ الوقت: "+time:"";var msg="📅 *"+name+"*\n🗓️ "+gStr+"\n🌙 "+hStr+tStr+"\n\n_تقويم بدر البدور_";window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");}
+
+
 function applyTheme(){
   document.documentElement.toggleAttribute('data-dark',dark);
   document.getElementById('darkBtn').textContent=dark?'☀️':'🌙';
@@ -510,23 +536,27 @@ function goPage(p){
 
 // ══ HERO ═══════════════════════════════════════════════
 function rHero(){
-  const h=g2h(today.getFullYear(),today.getMonth(),today.getDate());
-  const moon=getMoonPhase(today);
-  document.getElementById('hero').innerHTML=`
-    <div class="hero-top">
-      <div class="hero-left">
-        <div class="hl-day">${DA[today.getDay()]} · ${GM[today.getMonth()]} ${today.getFullYear()}</div>
-        <div class="hl-num">${gr(today.getDate())}</div>
-        <div class="hl-mon">${GM[today.getMonth()]} ${today.getFullYear()}م</div>
-      </div>
-      <div class="hero-hijri">
-        <div class="hh-d">${ar(h.d)}</div>
-        <div class="hh-m">${HM[h.m]}</div>
-        <div class="hh-y">${ar(h.y)}هـ</div>
-      </div>
-    </div>
-    <div class="hero-moon">${moon.emoji}</div>
-    <div class="hero-moon-label">${moon.emoji} ${moon.name}</div>`;
+  try {
+    const h=g2h(today.getFullYear(),today.getMonth(),today.getDate());
+    const moon=getMoonPhase(today);
+    const el=document.getElementById('hero');
+    if(!el)return;
+    el.innerHTML=
+      '<div class="hero-top">'
+      +'<div class="hero-left">'
+      +'<div class="hl-day">'+DA[today.getDay()]+' · '+GM[today.getMonth()]+' '+today.getFullYear()+'</div>'
+      +'<div class="hl-num">'+gr(today.getDate())+'</div>'
+      +'<div class="hl-mon">'+GM[today.getMonth()]+' '+today.getFullYear()+'م</div>'
+      +'</div>'
+      +'<div class="hero-hijri">'
+      +'<div class="hh-d">'+ar(h.d)+'</div>'
+      +'<div class="hh-m">'+HM[h.m]+'</div>'
+      +'<div class="hh-y">'+ar(h.y)+'هـ</div>'
+      +'</div>'
+      +'</div>'
+      +'<div class="hero-moon">'+moon.emoji+'</div>'
+      +'<div class="hero-moon-label">'+moon.name+'</div>';
+  } catch(e){ console.error('rHero error:',e); }
 }
 
 // ══ CALENDAR ═══════════════════════════════════════════
@@ -891,6 +921,8 @@ function initPr(){
   } else {window._pl=def;rPrayers(def.lat,def.lng,def.city);}
 }
 setInterval(()=>{if(window._pl)rPrayers(window._pl.lat,window._pl.lng,window._pl.city);},60000);
+
+
 
 // ══ INIT ═══════════════════════════════════════════════
 applyTheme();
