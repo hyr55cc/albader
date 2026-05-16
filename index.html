@@ -147,7 +147,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Tajawa
 .vp{flex:1;padding:6px;border:none;background:var(--surface2);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text3);font-family:inherit;transition:all .15s}
 .vp.on{background:var(--accent);color:#fff}
 .day-hdrs{display:grid;grid-template-columns:repeat(7,1fr);padding:8px 6px 0}
-.dh{text-align:center;font-size:10px;font-weight:700;color:var(--text3);padding-bottom:4px}
+.dh{text-align:center;font-size:9px;font-weight:700;color:var(--text3);padding-bottom:4px;letter-spacing:-.3px}
 .dh.we{color:var(--weekend)}
 .days{display:grid;grid-template-columns:repeat(7,1fr);padding:4px 6px 10px;gap:1px}
 /* Day cell */
@@ -193,7 +193,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Tajawa
 .md.mtoday{background:var(--accent);color:#fff}
 .md.mhol{background:var(--holiday-bg);color:var(--holiday)}
 .md.mwd{color:var(--white-day);font-weight:700}
-.md.mhdr{color:var(--text3);font-size:8px;font-weight:700}
+.md.mhdr{color:var(--text3);font-size:7px;font-weight:700;letter-spacing:-.3px}
 /* Legend */
 .legend{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;border-top:1px solid var(--border)}
 .leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2)}
@@ -607,7 +607,7 @@ function buildCal(mode){
 
 function buildMonth(y,m,mode,fd,dim){
   let h='<div class="day-hdrs">';
-  DS.forEach((d,i)=>h+=`<div class="dh${i===5||i===6?' we':''}">${d.charAt(0)}</div>`);
+  DS.forEach((d,i)=>h+=`<div class="dh${i===5||i===6?' we':''}">${d}</div>`);
   h+='</div><div class="days">';
   for(let i=0;i<fd;i++)h+='<div class="dc emp"></div>';
   for(let d=1;d<=dim;d++){
@@ -655,7 +655,7 @@ function buildWeek(y,m,mode){
     const hi=g2h(d.getFullYear(),d.getMonth(),d.getDate());
     const hol=getH(key);const mds=getMd(key);const evs=getEv(key);
     h+=`<div class="wc${isWE?' we-wc':''}${isT?' today-wc':''}">
-      <div class="wc-day">${DS[i].charAt(0)+DS[i].charAt(1)}</div>
+      <div class="wc-day">${DS[i]}</div>
       <div class="wc-greg">${mode==='hijri'?ar(hi.d):d.getDate()}</div>
       <div class="wc-hijri">${mode==='greg'?'':mode==='hijri'?HM[hi.m].substring(0,5):ar(hi.d)+' '+HM[hi.m].substring(0,4)}</div>
       <div class="wc-events">
@@ -711,7 +711,7 @@ function buildYear(y,mode){
     const dim=new Date(y,mo+1,0).getDate();
     const hm=g2h(y,mo,15);
     h+=`<div class="mc"><div class="mc-hdr"><div class="mc-gm">${GM[mo]}</div><div class="mc-hm">${HM[hm.m].substring(0,8)}</div></div><div class="mc-days">`;
-    DS.forEach((d,i)=>h+=`<div class="md mhdr${i===5||i===6?' we':''}">${d.charAt(0)}</div>`);
+    DS.forEach((d,i)=>h+=`<div class="md mhdr${i===5||i===6?' we':''}">${d}</div>`);
     for(let i=0;i<fd;i++)h+='<div class="md"></div>';
     for(let d=1;d<=dim;d++){
       const key=dk(y,mo,d);
