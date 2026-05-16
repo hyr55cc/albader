@@ -251,6 +251,26 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Tajawa
 .mbtns{display:flex;gap:8px;margin-top:16px}
 .m-cancel{flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text2);font-family:inherit}
 .m-save{flex:2;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit}
+
+  /* Font size scale */
+  [data-fsize="sm"] .dc-g{font-size:10px;width:20px;height:20px}
+  [data-fsize="md"] .dc-g{font-size:12px;width:26px;height:26px}
+  [data-fsize="lg"] .dc-g{font-size:14px;width:30px;height:30px}
+  [data-fsize="sm"] .dc-h{font-size:7px}
+  [data-fsize="md"] .dc-h{font-size:9px}
+  [data-fsize="lg"] .dc-h{font-size:11px}
+  [data-fsize="sm"] .dc{min-height:48px}
+  [data-fsize="md"] .dc{min-height:56px}
+  [data-fsize="lg"] .dc{min-height:68px}
+  [data-fsize="sm"]{font-size:13px}
+  [data-fsize="lg"]{font-size:17px}
+  [data-fsize="sm"] .pb-time{font-size:10px}
+  [data-fsize="lg"] .pb-time{font-size:14px}
+  /* Segmented control */
+  .seg{display:flex;gap:0;background:var(--surface2);border-radius:9px;padding:3px;border:1px solid var(--border)}
+  .seg-btn{flex:1;padding:8px 4px;border:none;background:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;color:var(--text3);font-family:inherit;transition:all .15s;text-align:center;line-height:1.4}
+  .seg-btn.on{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+
 </style>
 </head>
 <body>
@@ -337,6 +357,43 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Tajawa
       <div class="rem-row" id="remRow"></div>
     </div>
     <div class="sg">
+      <div class="sg-title">حجم الخط</div>
+      <div class="sr">
+        <div class="sr-info"><div class="sr-l">اختر حجم النص والأرقام</div></div>
+      </div>
+      <div style="padding:4px 14px 14px">
+        <div class="seg" id="fsizeSeg">
+          <button class="seg-btn" onclick="selFsize('sm')">صغير<br><span style="font-size:10px;opacity:.6">أ</span></button>
+          <button class="seg-btn" onclick="selFsize('md')">متوسط<br><span style="font-size:12px;opacity:.6">أ</span></button>
+          <button class="seg-btn" onclick="selFsize('lg')">كبير<br><span style="font-size:14px;opacity:.6">أ</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sg">
+      <div class="sg-title">نوع الأرقام</div>
+      <div class="sr">
+        <div class="sr-info"><div class="sr-l">أرقام التقويم الهجري</div><div class="sr-s">اختر الشكل المفضل لديك</div></div>
+      </div>
+      <div style="padding:4px 14px 14px">
+        <div class="seg" id="hnumSeg">
+          <button class="seg-btn" onclick="selHNum('arabic')">عربية<br><span style="font-size:13px">٢٩ ذو القعدة</span></button>
+          <button class="seg-btn" onclick="selHNum('western')">إنجليزية<br><span style="font-size:13px">29 ذو القعدة</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sg">
+      <div class="sg-title">نوع أرقام التقويم الميلادي</div>
+      <div style="padding:4px 14px 14px">
+        <div class="seg" id="gnumSeg">
+          <button class="seg-btn" onclick="selGNum('western')">إنجليزية<br><span style="font-size:13px">16 May</span></button>
+          <button class="seg-btn" onclick="selGNum('arabic')">عربية<br><span style="font-size:13px">١٦ مايو</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sg">
       <div class="sg-title">معلومات</div>
       <div class="sr"><div class="sr-info"><div class="sr-l">الإصدار</div><div class="sr-s">بدر البدور v2.1 — طريقة أم القرى</div></div></div>
     </div>
@@ -378,7 +435,9 @@ const HM=['محرم','صفر','ربيع الأول','ربيع الثاني','ج�
 const GM=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const DS=['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
 const DA=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-const ar=n=>String(n).replace(/[0-9]/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]);
+const AR_MAP='٠١٢٣٤٥٦٧٨٩';
+const ar=n=>cfg.hnum==='western'?String(n):String(n).replace(/[0-9]/g,d=>AR_MAP[d]);
+const gr=n=>cfg.gnum==='arabic'?String(n).replace(/[0-9]/g,d=>AR_MAP[d]):String(n);
 const dk=(y,m,d)=>`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
 const HOL=[
@@ -397,7 +456,7 @@ const ld=k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}};
 const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 
 let dark=ld('dk')===true;
-let cfg=Object.assign({notifMed:true,notifEvent:true,notifHoliday:true,sound:'gentle',remind:10},ld('cfg')||{});
+let cfg=Object.assign({notifMed:true,notifEvent:true,notifHoliday:true,sound:'gentle',remind:10,fsize:'md',hnum:'arabic',gnum:'western'},ld('cfg')||{});
 let meds=ld('meds')||[];
 let evts=ld('evts')||[];
 const today=new Date();
@@ -410,10 +469,27 @@ const getEv=k=>evts.filter(x=>x.date===k);
 const isWD=hd=>hd>=13&&hd<=15;
 
 // ══ THEME ══════════════════════════════════════════════
+function applyFsize(){
+  const root=document.documentElement;
+  root.setAttribute('data-fsize',cfg.fsize||'md');
+}
+function selFsize(v){cfg.fsize=v;upS('fsize',v);applyFsize();rSettings();}
+function selHNum(v){cfg.hnum=v;upS('hnum',v);rSettings();rerCalCur();}
+function selGNum(v){cfg.gnum=v;upS('gnum',v);rSettings();rerCalCur();}
+function rerCalCur(){
+  // re-render whichever cal page is visible
+  if(curPage==='hijri')rHijri();
+  else if(curPage==='greg')rGreg();
+  else if(curPage==='dual')rDual();
+  // also update hero
+  rHero();
+}
+
 function applyTheme(){
   document.documentElement.toggleAttribute('data-dark',dark);
   document.getElementById('darkBtn').textContent=dark?'☀️':'🌙';
   const c=document.getElementById('stgDark');if(c)c.checked=dark;
+  applyThemeColor();
 }
 function toggleDark(){dark=!dark;sv('dk',dark);applyTheme();}
 
@@ -435,11 +511,12 @@ function goPage(p){
 // ══ HERO ═══════════════════════════════════════════════
 function rHero(){
   const h=g2h(today.getFullYear(),today.getMonth(),today.getDate());
+  const moon=getMoonPhase(today);
   document.getElementById('hero').innerHTML=`
     <div class="hero-top">
       <div class="hero-left">
         <div class="hl-day">${DA[today.getDay()]} · ${GM[today.getMonth()]} ${today.getFullYear()}</div>
-        <div class="hl-num">${today.getDate()}</div>
+        <div class="hl-num">${gr(today.getDate())}</div>
         <div class="hl-mon">${GM[today.getMonth()]} ${today.getFullYear()}م</div>
       </div>
       <div class="hero-hijri">
@@ -447,7 +524,9 @@ function rHero(){
         <div class="hh-m">${HM[h.m]}</div>
         <div class="hh-y">${ar(h.y)}هـ</div>
       </div>
-    </div>`;
+    </div>
+    <div class="hero-moon">${moon.emoji}</div>
+    <div class="hero-moon-label">${moon.emoji} ${moon.name}</div>`;
 }
 
 // ══ CALENDAR ═══════════════════════════════════════════
@@ -520,10 +599,10 @@ function buildMonth(y,m,mode,fd,dim){
       inside=`<div class="dc-g">${ar(hi.d)}</div><div class="dc-h">${HM[hi.m].substring(0,4)}</div>`;
     } else if(mode==='greg'){
       // Greg only: show gregorian day, NO hijri
-      inside=`<div class="dc-g">${d}</div>`;
+      inside=`<div class="dc-g">${gr(d)}</div>`;
     } else {
       // Dual: greg day + hijri day/month
-      inside=`<div class="dc-g">${d}</div><div class="dc-h">${ar(hi.d)} ${HM[hi.m].substring(0,4)}</div>`;
+      inside=`<div class="dc-g">${gr(d)}</div><div class="dc-h">${ar(hi.d)} ${HM[hi.m].substring(0,4)}</div>`;
     }
     const dots=[hol?'<span class="dot dot-h"></span>':'',...mds.map(()=>'<span class="dot dot-m"></span>'),...evs.map(()=>'<span class="dot dot-e"></span>')].join('');
     if(dots)inside+=`<div class="dc-ev">${dots}</div>`;
@@ -645,7 +724,14 @@ function rLists(){
     '<div class="empty"><div class="empty-ic">💊</div>لا توجد أدوية مسجلة</div>';
   document.getElementById('evList').innerHTML=evts.length?srt(evts).map((e,i)=>`
     <div class="ev-row"><span class="ev-ic">📌</span>
-    <div class="ev-info"><div class="ev-name">${e.name}</div><div class="ev-when">${e.date}${e.time?' · '+e.time:''}</div></div>
+    <div class="ev-info">
+      <div class="ev-name">${e.name}</div>
+      <div class="ev-when">${e.date}${e.time?' · '+e.time:''}</div>
+      <div class="ev-actions">
+        <button class="ev-action-btn cal" onclick="exportToCalendar('${e.name}','${e.date}','${e.time||''}')">📲 تصدير</button>
+        <button class="ev-action-btn wa" onclick="shareWhatsapp('${e.name}','${e.date}','${e.time||''}')">واتساب</button>
+      </div>
+    </div>
     <button class="ev-del" onclick="delEv(${i})">✕</button></div>`).join(''):
     '<div class="empty"><div class="empty-ic">📌</div>لا توجد مواعيد مضافة</div>';
 }
@@ -724,12 +810,22 @@ function schedN(name,date,time){
 // ══ SETTINGS ═══════════════════════════════════════════
 function upS(k,v){cfg[k]=v;sv('cfg',cfg);}
 function rSettings(){
+  applyThemeColor();
   document.getElementById('stgDark').checked=dark;
   document.getElementById('stgMed').checked=cfg.notifMed;
   document.getElementById('stgEv').checked=cfg.notifEvent;
   document.getElementById('stgHol').checked=cfg.notifHoliday;
   document.getElementById('sndGrid').innerHTML=SNDS.map(s=>`<button class="snd-btn${cfg.sound===s.id?' on':''}" onclick="selS('${s.id}')">${s.l}</button>`).join('');
   document.getElementById('remRow').innerHTML=REMS.map(r=>`<button class="rem-btn${cfg.remind===r?' on':''}" onclick="selR(${r})">${r} د</button>`).join('');
+  // font size seg
+  const fs=document.getElementById('fsizeSeg');
+  if(fs)fs.querySelectorAll('.seg-btn').forEach((b,i)=>{const vals=['sm','md','lg'];b.classList.toggle('on',cfg.fsize===vals[i]);});
+  // hnum seg
+  const hn=document.getElementById('hnumSeg');
+  if(hn)hn.querySelectorAll('.seg-btn').forEach((b,i)=>{b.classList.toggle('on',(i===0&&cfg.hnum==='arabic')||(i===1&&cfg.hnum==='western'));});
+  // gnum seg
+  const gn=document.getElementById('gnumSeg');
+  if(gn)gn.querySelectorAll('.seg-btn').forEach((b,i)=>{b.classList.toggle('on',(i===0&&cfg.gnum==='western')||(i===1&&cfg.gnum==='arabic'));});
 }
 function selS(id){cfg.sound=id;sv('cfg',cfg);rSettings();}
 function selR(r){cfg.remind=r;sv('cfg',cfg);rSettings();}
@@ -798,6 +894,8 @@ setInterval(()=>{if(window._pl)rPrayers(window._pl.lat,window._pl.lng,window._pl
 
 // ══ INIT ═══════════════════════════════════════════════
 applyTheme();
+applyThemeColor();
+applyFsize();
 rHero();
 rLists();
 initPr();
